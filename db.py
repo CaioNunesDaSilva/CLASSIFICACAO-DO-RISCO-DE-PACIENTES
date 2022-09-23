@@ -1,4 +1,4 @@
-import mysql.connector as MySQL
+import mysql.connector as mysql
 
 from constantes import BANCO_DE_DADOS_ENDERECO
 from constantes import BANCO_DE_DADOS_NOME
@@ -7,13 +7,13 @@ from constantes import BANCO_DE_DADOS_SENHA
 
 
 def __conectar(host=BANCO_DE_DADOS_ENDERECO, database=BANCO_DE_DADOS_NOME,
-               user=BANCO_DE_DADOS_USUARIO, password=BANCO_DE_DADOS_SENHA) -> MySQL.MySQLConnection:
-    conexao = MySQL.connect(host=host, database=database, user=user, password=password)
+               user=BANCO_DE_DADOS_USUARIO, password=BANCO_DE_DADOS_SENHA) -> mysql.MySQLConnection:
+    conexao = mysql.connect(host=host, database=database, user=user, password=password)
     if conexao.is_connected():
         return conexao
 
 
-def __select(conexao: MySQL.MySQLConnection, campos: str, tabela: str, condicao=None, desempacotar=False) -> list:
+def __select(conexao: mysql.MySQLConnection, campos: str, tabela: str, condicao=None, desempacotar=False) -> list:
     cursor = conexao.cursor()
     if condicao:
         cursor.execute(f"SELECT {campos} FROM {tabela} WHERE {condicao};")
@@ -44,7 +44,7 @@ def __select(conexao: MySQL.MySQLConnection, campos: str, tabela: str, condicao=
     return selecao
 
 
-def __insert(conexao: MySQL.MySQLConnection, tabela_campos: str, valores):
+def __insert(conexao: mysql.MySQLConnection, tabela_campos: str, valores):
     cursor = conexao.cursor()
     if isinstance(valores, tuple):
         cursor.execute(f"INSERT INTO {tabela_campos} VALUES {valores};")
@@ -52,17 +52,17 @@ def __insert(conexao: MySQL.MySQLConnection, tabela_campos: str, valores):
         cursor.execute(f"INSERT INTO {tabela_campos} VALUES ('{valores}');")
 
 
-def __update(conexao: MySQL.MySQLConnection, tabela: str, coluna_valor: str, condicao: str):
+def __update(conexao: mysql.MySQLConnection, tabela: str, coluna_valor: str, condicao: str):
     cursor = conexao.cursor()
     cursor.execute(f"UPDATE {tabela} SET {coluna_valor} WHERE {condicao};")
 
 
-def __delete(conexao: MySQL.MySQLConnection, tabela: str, condicao: str):
+def __delete(conexao: mysql.MySQLConnection, tabela: str, condicao: str):
     cursor = conexao.cursor()
     cursor.execute(f"DELETE FROM {tabela} WHERE {condicao};")
 
 
-def __desconectar(conexao: MySQL.MySQLConnection, rollback=False):
+def __desconectar(conexao: mysql.MySQLConnection, rollback=False):
     if rollback:
         conexao.rollback()
     else:

@@ -5,6 +5,9 @@ Servidor:
 
 	>NumPy
 	Windows: pip install numpy
+
+	>Scikit-Learn
+	Windows: pip install scikit-learn
 	
 	>MySQL Server
 	 https://dev.mysql.com/downloads/mysql/

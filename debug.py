@@ -1,9 +1,35 @@
+# Utilizar para testes, nao manter no codigo final
+
 from random import randint
 from numpy import ndarray
 from numpy import array
+from time import sleep
 
 
-# Utilizar somente para testes de baixa confiabilidade
+def debug(x):
+    print(x)
+    print(type(x))
+
+
+def __simular_latencia(n: int):
+    sleep(randint(0, n))
+
+
+def simular_conexao_arduino():
+    __simular_latencia(120)
+    return gerar_sinais_vitais(), randint(0, 9999)
+
+
+def simular_acesso_db(dados):
+    __simular_latencia(30)
+    return True
+
+
+def simular_categorizacao_IA(dados):
+    __simular_latencia(60)
+    return True
+
+
 def gerar_sinais_vitais(risco=False) -> ndarray:
     temp = randint(300, 400)
 

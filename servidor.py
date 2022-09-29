@@ -1,44 +1,65 @@
 from sys import exit
 from threading import Thread
+from time import sleep
 
-from debug import simular_conexao_arduino
-from debug import simular_acesso_db
-from debug import simular_categorizacao_IA
+from constantes import TAXA_ATUALIZACAO_ARDUINO
 
-
-def controlador_de_rede_arduino():
-    while REDE_ABERTA_ARDUINO:
-        conexao = simular_conexao_arduino()
-        Thread(target=medir_risco, args=conexao).start()
+from db import checar_pacientes_ativos_db
 
 
-def medir_risco(dados, ident):
-    simular_categorizacao_IA(dados)
-    simular_acesso_db(dados)
+def checagem_pacientes_ativos():
+    while CHECAR_PACIENTES_ATIVOS:
+
+        pacientes_ativos_db = checar_pacientes_ativos_db()
+
+        for paciente in pacientes_ativos_db:
+            if paciente not in PACIENTES_ATIVOS:
+                PACIENTES_ATIVOS.append(paciente)
+                Thread(target=analisar_medicoes, args=(paciente, )).start()
+
+        for paciente in PACIENTES_ATIVOS:
+            if paciente not in pacientes_ativos_db:
+                PACIENTES_ATIVOS.remove(paciente)
+
+        sleep(TAXA_ATUALIZACAO_ARDUINO)
+
+
+def analisar_medicoes(paciente: int):
+    while paciente in PACIENTES_ATIVOS:
+
+        sleep(TAXA_ATUALIZACAO_ARDUINO)
 
 
 if __name__ == "__main__":
-    REDE_ABERTA_ARDUINO = True
+    PACIENTES_ATIVOS = []
 
-    thread_CRA = Thread(target=controlador_de_rede_arduino)
-    thread_CRA.start()
+    CHECAR_PACIENTES_ATIVOS = True
+
+    Thread(target=checagem_pacientes_ativos).start()
 
     while True:
         comando = input("SERVIDOR ACEITANDO COMANDOS...\n")
 
         if comando.upper() == "SAIR":
-            REDE_ABERTA_ARDUINO = False
-            thread_CRA.join()
+            CHECAR_PACIENTES_ATIVOS = False
+            PACIENTES_ATIVOS.clear()
             exit(0)
             print("TERMINANDO APLICACAO, AGUARDE...")
 
-        elif comando.upper() == "FECHAR ARDUINO":
-            REDE_ABERTA_ARDUINO = False
-            print("SERVIDOR FECHADO PARA CONEXOES DE ARDUINO")
+        elif comando.upper() == "FECHAR PACIENTES":
+            CHECAR_PACIENTES_ATIVOS = False
+            PACIENTES_ATIVOS.clear()
+            print("SERVIDOR FECHADO PARA PACIENTES")
 
-        elif comando.upper() == "ABRIR ARDUINO":
-            REDE_ABERTA_ARDUINO = True
-            print("SERVIDOR ABERTO PARA CONEXOES DE ARDUINO")
+        elif comando.upper() == "ABRIR PACIENTES":
+            CHECAR_PACIENTES_ATIVOS = True
+            print("SERVIDOR ABERTO PARA PACIENTES")
+
+        elif comando.upper() == "LISTAR PACIENTES":
+            print("----------")
+            for id_paciente in PACIENTES_ATIVOS:
+                print("id: {}".format(id_paciente))
+            print("----------")
 
         else:
             print("COMANDO INVALIDO")

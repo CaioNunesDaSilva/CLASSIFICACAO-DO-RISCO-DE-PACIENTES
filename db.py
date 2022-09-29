@@ -68,4 +68,12 @@ def __desconectar(conexao: mysql.MySQLConnection, rollback=False):
     else:
         conexao.commit()
     conexao.close()
-    
+
+
+def checar_pacientes_ativos_db() -> list:
+    #conexao = __conectar()
+    #pacientes = __select(conexao, "idPacientes", "Pacientes", "isAtivo = 1")
+    #__desconectar(conexao)
+    #return pacientes
+
+    return [1, 2, 3]

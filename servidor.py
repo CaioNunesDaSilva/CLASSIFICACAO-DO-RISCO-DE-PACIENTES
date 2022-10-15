@@ -1,10 +1,13 @@
 from sys import exit
 from threading import Thread
 from time import sleep
+from socket import socket, AF_INET, SOCK_STREAM
 
-from constantes import TAXA_ATUALIZACAO_ARDUINO
+from IA import classificar
+from auxiliar import codificar, descodificar, Requisicao
+from db import checar_pacientes_ativos_db, get_medicoes_nao_classificadas_from_paciente, inserir_risco_medicao
 
-from db import checar_pacientes_ativos_db
+from constantes import TAXA_ATUALIZACAO_ARDUINO, SOCKET_ENDERECO, SOCKET_PORTA, BUFFER
 
 
 def checagem_pacientes_ativos():
@@ -27,22 +30,46 @@ def checagem_pacientes_ativos():
 def analisar_medicoes(paciente: int):
     while paciente in PACIENTES_ATIVOS:
 
+        medicoes = get_medicoes_nao_classificadas_from_paciente(paciente)
+        for medicao in medicoes:
+
+            risco = classificar(medicao)
+
+            inserir_risco_medicao(medicao, risco.to_int())
+
         sleep(TAXA_ATUALIZACAO_ARDUINO)
+
+
+def conexao_sistema_medico(conexao, endereco):
+    while CONEXAO_SISTEMA_MEDICO:
+        requisicao = descodificar(conexao.recv(BUFFER), Requisicao)
+
+        if requisicao == Requisicao.DESCONECTAR:
+            break
+
+        else:
+            break
 
 
 if __name__ == "__main__":
     PACIENTES_ATIVOS = []
-
     CHECAR_PACIENTES_ATIVOS = True
-
     Thread(target=checagem_pacientes_ativos).start()
+
+    CONEXAO_SISTEMA_MEDICO = True
+    soquete = socket(AF_INET, SOCK_STREAM)
+    soquete.bind((SOCKET_ENDERECO, SOCKET_PORTA))
+    soquete.settimeout(10)
+    soquete.listen()
 
     while True:
         comando = input("SERVIDOR ACEITANDO COMANDOS...\n")
 
         if comando.upper() == "SAIR":
             CHECAR_PACIENTES_ATIVOS = False
+            CONEXAO_SISTEMA_MEDICO = False
             PACIENTES_ATIVOS.clear()
+            soquete.close()
             exit(0)
             print("TERMINANDO APLICACAO, AGUARDE...")
 
@@ -60,6 +87,26 @@ if __name__ == "__main__":
             for id_paciente in PACIENTES_ATIVOS:
                 print("id: {}".format(id_paciente))
             print("----------")
+
+        elif comando.upper() == "CONECTAR MEDICO":
+            print("CONECTANDO COM SISTEMA MEDICO NO ENDERECO:{}, PORTA:{}".format(SOCKET_ENDERECO, SOCKET_PORTA))
+            conexao, endereco = soquete.accept()
+            print("SISTEMA MEDICO ENCONTRADO")
+            Thread(target=conexao_sistema_medico, args=(conexao, endereco)).start()
+            print("SISTEMA MEDICO CONECTADO")
+
+        elif comando.upper() == "FECHAR MEDICO":
+            CONEXAO_SISTEMA_MEDICO = False
+            soquete.close()
+            print("SERVIDOR FECHADO PARA SISTEMAS MEDICOS")
+
+        elif comando.upper() == "ABRIR MEDICO":
+            CONEXAO_SISTEMA_MEDICO = True
+            soquete = socket(AF_INET, SOCK_STREAM)
+            soquete.bind((SOCKET_ENDERECO, SOCKET_PORTA))
+            soquete.settimeout(10)
+            soquete.listen()
+            print("SERVIDOR ABERTO PARA SISTEMAS MEDICOS")
 
         else:
             print("COMANDO INVALIDO")

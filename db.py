@@ -71,9 +71,24 @@ def __desconectar(conexao: mysql.MySQLConnection, rollback=False):
 
 
 def checar_pacientes_ativos_db() -> list:
-    #conexao = __conectar()
-    #pacientes = __select(conexao, "idPacientes", "Pacientes", "isAtivo = 1")
-    #__desconectar(conexao)
-    #return pacientes
+    conexao = __conectar()
+    pacientes = __select(conexao, "idPaciente", "paciente", "isAtivo = 1")
+    __desconectar(conexao)
+    return pacientes
 
-    return [1, 2, 3]
+
+def get_medicoes_nao_classificadas_from_paciente(paciente: int) -> list:
+    conexao = __conectar()
+    medicoes = __select(conexao, "idMedicao, numOxi, numBpm, numTemp", "medicoes",
+                        "idPaciente = {} AND risco IS NULL".format(paciente))
+    __desconectar(conexao)
+    return medicoes
+
+
+def inserir_risco_medicao(medicao: int, risco: int):
+    conexao = __conectar()
+    __update(conexao, "medicoes", "risco = {}".format(risco), "idMedicao = {}".format(medicao))
+    __desconectar(conexao)
+
+
+# timestamp = datetime.datetime

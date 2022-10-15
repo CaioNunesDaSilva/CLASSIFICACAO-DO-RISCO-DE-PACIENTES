@@ -1,8 +1,8 @@
 # Utilizar para testes, nao manter no codigo final
 
 from random import randint
-from numpy import ndarray
-from numpy import array
+
+from auxiliar import Categoria
 
 
 def debug(x):
@@ -10,7 +10,7 @@ def debug(x):
     print(type(x))
 
 
-def gerar_sinais_vitais(risco=False) -> ndarray:
+def gerar_sinais_vitais(risco=False, risco_as_int=True) -> list:
     temp = randint(300, 400)
 
     bpm = randint(0, 200)
@@ -18,6 +18,7 @@ def gerar_sinais_vitais(risco=False) -> ndarray:
     oxigenacao = randint(0, 100)
 
     if risco:
+
         risco_paciente = 0
         risco_paciente = risco_paciente + (100 - oxigenacao)
 
@@ -32,7 +33,21 @@ def gerar_sinais_vitais(risco=False) -> ndarray:
             risco_paciente = risco_paciente + (362 - temp)
 
         temp = float(temp / 10)
-        return array([temp, bpm, oxigenacao, risco_paciente])
+
+        if risco_paciente < 25:
+            categoria = Categoria(5)
+        elif risco_paciente < 50:
+            categoria = Categoria(4)
+        elif risco_paciente < 75:
+            categoria = Categoria(3)
+        elif risco_paciente < 100:
+            categoria = Categoria(2)
+        else:
+            categoria = Categoria(1)
+
+        if risco_as_int:
+            return [temp, bpm, oxigenacao, categoria.value]
+        return [temp, bpm, oxigenacao, categoria]
 
     temp = float(temp / 10)
-    return array([temp, bpm, oxigenacao])
+    return [temp, bpm, oxigenacao]

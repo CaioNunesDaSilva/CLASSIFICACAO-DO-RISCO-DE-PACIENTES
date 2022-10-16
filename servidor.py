@@ -33,9 +33,9 @@ def analisar_medicoes(paciente: int):
         medicoes = get_medicoes_nao_classificadas_from_paciente(paciente)
         for medicao in medicoes:
 
-            risco = classificar(medicao)
+            risco = classificar(medicao[1:])
 
-            inserir_risco_medicao(medicao, risco.to_int())
+            inserir_risco_medicao(medicao[0], risco.to_int())
 
         sleep(TAXA_ATUALIZACAO_ARDUINO)
 

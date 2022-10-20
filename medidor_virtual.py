@@ -1,12 +1,11 @@
-from sys import exit
-from time import sleep
-from threading import Thread
 from random import randint, random
-
-from db import ativar_paciente_medidor_virtual, get_paciente_medidor_virtual,\
-    inserir_medicao_medidor_virtual, desativar_paciente_medidor_virtual
+from sys import exit
+from threading import Thread
+from time import sleep
 
 from constantes import TAXA_ATUALIZACAO_ARDUINO
+from db import ativar_paciente_medidor_virtual, get_paciente_medidor_virtual, \
+    inserir_medicao_medidor_virtual, desativar_paciente_medidor_virtual
 
 
 def enviar_medicoes():

@@ -1,19 +1,19 @@
+from socket import socket, AF_INET, SOCK_STREAM
 from sys import exit
 from threading import Thread
 from time import sleep
-from socket import socket, AF_INET, SOCK_STREAM
 
 from IA import classificar
 from auxiliar import codificar, descodificar, Requisicao
-from db import checar_pacientes_ativos_db, get_medicoes_nao_classificadas_from_paciente, inserir_risco_medicao
-
 from constantes import TAXA_ATUALIZACAO_ARDUINO, SOCKET_ENDERECO, SOCKET_PORTA, BUFFER
+from db import get_pacientes_ativos_db, get_medicoes_nao_classificadas_from_paciente, inserir_risco_medicao, \
+    get_medicoes_paciente_ativos, get_all_medicoes_nao_classificadas
 
 
 def checagem_pacientes_ativos():
     while CHECAR_PACIENTES_ATIVOS:
 
-        pacientes_ativos_db = checar_pacientes_ativos_db()
+        pacientes_ativos_db = get_pacientes_ativos_db()
 
         for paciente in pacientes_ativos_db:
             if paciente not in PACIENTES_ATIVOS:
@@ -46,6 +46,38 @@ def conexao_sistema_medico(conexao, endereco):
 
         if requisicao == Requisicao.DESCONECTAR:
             break
+
+        elif requisicao == Requisicao.PROXIMO_PACIENTE:
+            medicoes_pacientes = get_medicoes_paciente_ativos()
+
+            pacientes = []
+            risco_geral = []
+
+            for medicoes_paciente in medicoes_pacientes:
+                pacientes.append(medicoes_paciente[0][0])
+
+                risco = 0
+                for medicao in medicoes_paciente:
+                    risco += medicao[-1]
+                risco_geral.append(risco)
+
+            indice = risco_geral.index(min(risco_geral))
+            conexao.send(codificar([pacientes[indice], risco_geral[indice]]))
+
+        elif requisicao == Requisicao.PACIENTES_EMERGENCIA:
+            conexao.send(codificar(get_medicoes_paciente_ativos(risco=1, rows=1)))
+
+        elif requisicao == Requisicao.PACIENTES_MUITO_URGENTE:
+            conexao.send(codificar(get_medicoes_paciente_ativos(risco=2, rows=1)))
+
+        elif requisicao == Requisicao.PACIENTES_URGENTE:
+            conexao.send(codificar(get_medicoes_paciente_ativos(risco=3, rows=1)))
+
+        elif requisicao == Requisicao.PACIENTES_POUCO_URGENTE:
+            conexao.send(codificar(get_medicoes_paciente_ativos(risco=4, rows=1)))
+
+        elif requisicao == Requisicao.PACIENTES_NAO_URGENTE:
+            conexao.send(codificar(get_medicoes_paciente_ativos(risco=5, rows=1)))
 
         else:
             break
@@ -107,6 +139,13 @@ if __name__ == "__main__":
             soquete.settimeout(10)
             soquete.listen()
             print("SERVIDOR ABERTO PARA SISTEMAS MEDICOS")
+
+        elif comando.upper() == "ANALISAR RISCOS":
+            print("ANALISANDO MEDICOES NAO CLASSIFICADAS")
+            for medicao in get_all_medicoes_nao_classificadas():
+                risco = classificar(medicao[1:])
+                inserir_risco_medicao(medicao[0], risco.to_int())
+                print("MEDICAO {} CLASSIFICADA".format(medicao[0]))
 
         else:
             print("COMANDO INVALIDO")

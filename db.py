@@ -1,9 +1,9 @@
+from datetime import datetime
+
 import mysql.connector as mysql
 
-from constantes import BANCO_DE_DADOS_ENDERECO
-from constantes import BANCO_DE_DADOS_NOME
-from constantes import BANCO_DE_DADOS_USUARIO
-from constantes import BANCO_DE_DADOS_SENHA
+from constantes import BANCO_DE_DADOS_ENDERECO, BANCO_DE_DADOS_NOME, BANCO_DE_DADOS_USUARIO, BANCO_DE_DADOS_SENHA, \
+    NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO
 
 
 def __conectar(host=BANCO_DE_DADOS_ENDERECO, database=BANCO_DE_DADOS_NOME,
@@ -70,7 +70,7 @@ def __desconectar(conexao: mysql.MySQLConnection, rollback=False):
     conexao.close()
 
 
-def checar_pacientes_ativos_db() -> list:
+def get_pacientes_ativos_db() -> list:
     conexao = __conectar()
     pacientes = __select(conexao, "idPaciente", "paciente", "isAtivo = 1")
     __desconectar(conexao)
@@ -81,6 +81,13 @@ def get_medicoes_nao_classificadas_from_paciente(paciente: int) -> list:
     conexao = __conectar()
     medicoes = __select(conexao, "idMedicao, numOxi, numBpm, numTemp", "medicoes",
                         "idPaciente = {} AND risco IS NULL".format(paciente))
+    __desconectar(conexao)
+    return medicoes
+
+
+def get_all_medicoes_nao_classificadas() -> list:
+    conexao = __conectar()
+    medicoes = __select(conexao, "idMedicao, numOxi, numBpm, numTemp", "medicoes", "risco IS NULL")
     __desconectar(conexao)
     return medicoes
 
@@ -118,4 +125,31 @@ def desativar_paciente_medidor_virtual(idMedidor: int):
     __desconectar(conexao)
 
 
-# timestamp = datetime.datetime
+def get_medicoes_paciente_ativos(risco=0, rows=NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO) -> list:
+    if risco < 0 or risco > 5:
+        return []
+
+    ativos = get_pacientes_ativos_db()
+    conexao = __conectar()
+
+    pacientes = []
+    for paciente in ativos:
+        medicoes = []
+        data = datetime.now()
+        for x in range(rows):
+            if risco == 0:
+                rs = __select(conexao, "idPaciente, MAX(dtMedicao), risco", "medicoes",
+                              "idPaciente = {} AND dtMedicao < '{}'".format(paciente, data), desempacotar=True)
+            else:
+                rs = __select(conexao, "idPaciente, MAX(dtMedicao), risco", "medicoes",
+                              "idPaciente = {} AND dtMedicao < '{}' AND"
+                              " risco = {}".format(paciente, data, risco), desempacotar=True)
+            data = rs[1]
+            medicoes.append(rs)
+        pacientes.append(medicoes)
+
+    __desconectar(conexao)
+    return pacientes
+
+
+

@@ -1,4 +1,6 @@
+from datetime import datetime
 from enum import Enum
+from json import dumps, loads
 
 
 class Categoria(Enum):
@@ -37,6 +39,19 @@ class Requisicao(Enum):
 
 
 def codificar(dados) -> bytes:
+    if isinstance(dados, bytes):
+        return dados
+
+    if isinstance(dados, list):
+        for x in range(len(dados)):
+            for y in range(len(dados[x])):
+                for z in range(len(dados[x][y])):
+                    if isinstance(dados[x][y][z], datetime):
+                        dados[x][y][z] = dados[x][y][z].isoformat()
+
+        dados = dumps(dados)
+        return dados.encode()
+
     return dados.to_json().encode()
 
 
@@ -52,3 +67,6 @@ def descodificar(dados, classe):
 
     elif classe == Requisicao:
         return Requisicao.from_str(dados)
+
+    elif classe == "LISTA":
+        return loads(dados)

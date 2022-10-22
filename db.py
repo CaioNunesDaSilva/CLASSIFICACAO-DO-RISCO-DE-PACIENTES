@@ -77,17 +77,13 @@ def get_pacientes_ativos_db() -> list:
     return pacientes
 
 
-def get_medicoes_nao_classificadas_from_paciente(paciente: int) -> list:
+def get_all_medicoes_nao_classificadas(paciente=0) -> list:
     conexao = __conectar()
-    medicoes = __select(conexao, "idMedicao, numOxi, numBpm, numTemp", "medicoes",
-                        "idPaciente = {} AND risco IS NULL".format(paciente))
-    __desconectar(conexao)
-    return medicoes
-
-
-def get_all_medicoes_nao_classificadas() -> list:
-    conexao = __conectar()
-    medicoes = __select(conexao, "idMedicao, numOxi, numBpm, numTemp", "medicoes", "risco IS NULL")
+    if paciente:
+        medicoes = __select(conexao, "idMedicao, numOxi, numBpm, numTemp", "medicoes",
+                            "idPaciente = {} AND risco IS NULL".format(paciente))
+    else:
+        medicoes = __select(conexao, "idMedicao, numOxi, numBpm, numTemp", "medicoes", "risco IS NULL")
     __desconectar(conexao)
     return medicoes
 
@@ -98,58 +94,82 @@ def inserir_risco_medicao(medicao: int, risco: int):
     __desconectar(conexao)
 
 
-def ativar_paciente_medidor_virtual(idMedidor: int):
+def ativar_paciente_medidor_virtual(id_medidor: int):
     conexao = __conectar()
-    __insert(conexao, "paciente (idEquipamento, isAtivo)", "{}, 1".format(idMedidor))
+    __insert(conexao, "paciente (idEquipamento, isAtivo)", "{}, 1".format(id_medidor))
     __desconectar(conexao)
 
 
-def get_paciente_medidor_virtual(idMedidor: int):
+def get_paciente_medidor_virtual(id_medidor: int) -> list:
     conexao = __conectar()
     paciente = __select(conexao, "idPaciente", "paciente",
-                        "idEquipamento = {} AND isAtivo = 1".format(idMedidor), desempacotar=True)
+                        "idEquipamento = {} AND isAtivo = 1".format(id_medidor), desempacotar=True)
     __desconectar(conexao)
     return paciente
 
 
-def inserir_medicao_medidor_virtual(idPaciente: int, oxi: float, bpm: int, temp: float):
+def inserir_medicao(id_paciente: int, oxi: float, bpm: int, temp: float, risco=None):
     conexao = __conectar()
-    __insert(conexao, "medicoes (idPaciente, numOxi, numBpm, numTemp)",
-             "{}, {}, {}, {}".format(idPaciente, oxi, bpm, temp))
+    if risco:
+        __insert(conexao, "medicoes (idPaciente, numOxi, numBpm, numTemp, risco)",
+                 "{}, {}, {}, {}, {}".format(id_paciente, oxi, bpm, temp, risco))
+    else:
+        __insert(conexao, "medicoes (idPaciente, numOxi, numBpm, numTemp)",
+                 "{}, {}, {}, {}".format(id_paciente, oxi, bpm, temp))
     __desconectar(conexao)
 
 
-def desativar_paciente_medidor_virtual(idMedidor: int):
+def desativar_paciente_medidor_virtual(id_medidor: int):
     conexao = __conectar()
-    __update(conexao, "paciente", "isAtivo = 0", "idEquipamento = {} AND isAtivo = 1".format(idMedidor))
+    __update(conexao, "paciente", "isAtivo = 0", "idEquipamento = {} AND isAtivo = 1".format(id_medidor))
     __desconectar(conexao)
 
 
-def get_medicoes_paciente_ativos(risco=0, rows=NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO) -> list:
-    if risco < 0 or risco > 5:
-        return []
-
+def get_n_medicoes_pacientes_ativos(n_medicoes=NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO) -> list:
     ativos = get_pacientes_ativos_db()
     conexao = __conectar()
 
     pacientes = []
     for paciente in ativos:
+        date = datetime.now()
         medicoes = []
-        data = datetime.now()
-        for x in range(rows):
-            if risco == 0:
-                rs = __select(conexao, "idPaciente, MAX(dtMedicao), risco", "medicoes",
-                              "idPaciente = {} AND dtMedicao < '{}'".format(paciente, data), desempacotar=True)
-            else:
-                rs = __select(conexao, "idPaciente, MAX(dtMedicao), risco", "medicoes",
-                              "idPaciente = {} AND dtMedicao < '{}' AND"
-                              " risco = {}".format(paciente, data, risco), desempacotar=True)
-            data = rs[1]
-            medicoes.append(rs)
+        for x in range(n_medicoes):
+            medicao = __select(conexao, "idMedicao, MAX(dtMedicao), risco", "medicoes",
+                               "idPaciente = {} AND dtMedicao < '{}'".format(paciente, date), desempacotar=True)
+            date = medicao[1]
+            medicoes.append(medicao)
         pacientes.append(medicoes)
-
     __desconectar(conexao)
     return pacientes
 
 
+def get_all_medicoes_pacientes_ativos(risco=0) -> list:
+    ativos = get_pacientes_ativos_db()
+    conexao = __conectar()
 
+    pacientes = []
+    for paciente in ativos:
+        if risco:
+            medicoes = __select(conexao, "idPaciente, dtMedicao, risco", "medicoes",
+                                "idPaciente = {} AND risco = {}".format(paciente, risco))
+        else:
+            medicoes = __select(conexao, "idPaciente, dtMedicao, risco", "medicoes", "idPaciente = {}".format(paciente))
+
+        pacientes.append(medicoes)
+    __desconectar(conexao)
+    return pacientes
+
+
+def get_all_medicoes():
+    conexao = __conectar()
+    medicoes = __select(conexao, "numOxi, numBpm, numTemp, risco", "medicoes")
+    __desconectar(conexao)
+    return medicoes
+
+
+def corretivo_medicoes_nao_classificadas():
+    medicoes = get_all_medicoes_nao_classificadas()
+    conexao = __conectar()
+    for x in medicoes:
+        __delete(conexao, "medicoes", "idMedicao = {}".format(x[0]))
+    __desconectar(conexao)

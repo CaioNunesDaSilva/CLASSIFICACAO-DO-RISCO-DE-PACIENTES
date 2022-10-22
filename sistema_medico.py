@@ -8,8 +8,12 @@ from constantes import SOCKET_ENDERECO, SOCKET_PORTA, BUFFER, NUMERO_DE_MEDICOES
 def __print_pacientes_riscos(pacientes: list):
     print("PACIENTES DE RISCO:")
     for paciente in pacientes:
-        print("ID: {}".format(paciente[0][0]))
-        print("RISCO: {}\n".format(paciente[0][2]))
+        if paciente:
+            print("ID: {}".format(paciente[0][0]))
+            for medicao in paciente:
+                print("TIMESTAMP: {}".format(medicao[1]))
+                print("RISCO: {}".format(medicao[2]))
+            print("\n")
 
 
 if __name__ == "__main__":
@@ -52,29 +56,29 @@ if __name__ == "__main__":
             print("ID: {}".format(paciente[0]))
             print("RISCO MEDIO: {}".format(paciente[1] / NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO))
 
-        elif comando.upper() == "LISTAR PACIENTES EMERGENCIA":
+        elif comando.upper() == "LISTAR MEDICOES EMERGENCIA":
             soquete.send(codificar(Requisicao(1)))
-            print("BUSCANDO PACIENTES EM ESTADO DE EMERGENCIA, AGUARDE...")
+            print("BUSCANDO MEDICOES DE RISCO EMERGENCIA NOS PACIENTES ATIVOS, AGUARDE...")
             __print_pacientes_riscos(descodificar(soquete.recv(BUFFER), "LISTA"))
 
-        elif comando.upper() == "LISTAR PACIENTES MUITO URGENTE":
+        elif comando.upper() == "LISTAR MEDICOES MUITO URGENTE":
             soquete.send(codificar(Requisicao(2)))
-            print("BUSCANDO PACIENTES EM ESTADO DE MUITO URGENTE, AGUARDE...")
+            print("BUSCANDO MEDICOES DE RISCO MUITO URGENTE NOS PACIENTES ATIVOS, AGUARDE...")
             __print_pacientes_riscos(descodificar(soquete.recv(BUFFER), "LISTA"))
 
-        elif comando.upper() == "LISTAR PACIENTES URGENTE":
+        elif comando.upper() == "LISTAR MEDICOES URGENTE":
             soquete.send(codificar(Requisicao(3)))
-            print("BUSCANDO PACIENTES EM ESTADO DE URGENTE, AGUARDE...")
+            print("BUSCANDO MEDICOES DE RISCO URGENTE NOS PACIENTES ATIVOS, AGUARDE...")
             __print_pacientes_riscos(descodificar(soquete.recv(BUFFER), "LISTA"))
 
-        elif comando.upper() == "LISTAR PACIENTES POUCO URGENTE":
+        elif comando.upper() == "LISTAR MEDICOES POUCO URGENTE":
             soquete.send(codificar(Requisicao(4)))
-            print("BUSCANDO PACIENTES EM ESTADO DE POUCO URGENTE, AGUARDE...")
+            print("BUSCANDO MEDICOES DE RISCO POUCO URGENTE NOS PACIENTES ATIVOS, AGUARDE...")
             __print_pacientes_riscos(descodificar(soquete.recv(BUFFER), "LISTA"))
 
-        elif comando.upper() == "LISTAR PACIENTES NAO URGENTE":
+        elif comando.upper() == "LISTAR MEDICOES NAO URGENTE":
             soquete.send(codificar(Requisicao(5)))
-            print("BUSCANDO PACIENTES EM ESTADO DE NAO URGENTE, AGUARDE...")
+            print("BUSCANDO MEDICOES DE RISCO NAO URGENTE NOS PACIENTES ATIVOS, AGUARDE...")
             __print_pacientes_riscos(descodificar(soquete.recv(BUFFER), "LISTA"))
 
         else:

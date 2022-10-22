@@ -1,13 +1,16 @@
+from random import randint
 from socket import socket, AF_INET, SOCK_STREAM
 from sys import exit
 from threading import Thread
 from time import sleep
 
-from IA import classificar
-from auxiliar import codificar, descodificar, Requisicao
-from constantes import TAXA_ATUALIZACAO_ARDUINO, SOCKET_ENDERECO, SOCKET_PORTA, BUFFER
-from db import get_pacientes_ativos_db, get_medicoes_nao_classificadas_from_paciente, inserir_risco_medicao, \
-    get_medicoes_paciente_ativos, get_all_medicoes_nao_classificadas
+from numpy import array
+
+from IA import criar
+from auxiliar import codificar, descodificar, Requisicao, gerar_temp, gerar_oxi, gerar_bpm
+from constantes import TAXA_ATUALIZACAO_ARDUINO, SOCKET_ENDERECO, SOCKET_PORTA, BUFFER, NUMERO_DE_MEDICOES_MINIMAS_DB
+from db import get_pacientes_ativos_db, inserir_risco_medicao, get_n_medicoes_pacientes_ativos, \
+    get_all_medicoes_pacientes_ativos, get_all_medicoes_nao_classificadas, get_all_medicoes, inserir_medicao
 
 
 def checagem_pacientes_ativos():
@@ -30,10 +33,10 @@ def checagem_pacientes_ativos():
 def analisar_medicoes(paciente: int):
     while paciente in PACIENTES_ATIVOS:
 
-        medicoes = get_medicoes_nao_classificadas_from_paciente(paciente)
+        medicoes = get_all_medicoes_nao_classificadas(paciente)
         for medicao in medicoes:
 
-            risco = classificar(medicao[1:])
+            risco = IA.predict(array(medicao[1:]).reshape(1, -1))
 
             inserir_risco_medicao(medicao[0], risco.to_int())
 
@@ -47,8 +50,9 @@ def conexao_sistema_medico(conexao, endereco):
         if requisicao == Requisicao.DESCONECTAR:
             break
 
+        # TODO fix
         elif requisicao == Requisicao.PROXIMO_PACIENTE:
-            medicoes_pacientes = get_medicoes_paciente_ativos()
+            medicoes_pacientes = get_n_medicoes_pacientes_ativos()
 
             pacientes = []
             risco_geral = []
@@ -65,25 +69,36 @@ def conexao_sistema_medico(conexao, endereco):
             conexao.send(codificar([pacientes[indice], risco_geral[indice]]))
 
         elif requisicao == Requisicao.PACIENTES_EMERGENCIA:
-            conexao.send(codificar(get_medicoes_paciente_ativos(risco=1, rows=1)))
+            conexao.send(codificar(get_all_medicoes_pacientes_ativos(risco=1)))
 
         elif requisicao == Requisicao.PACIENTES_MUITO_URGENTE:
-            conexao.send(codificar(get_medicoes_paciente_ativos(risco=2, rows=1)))
+            conexao.send(codificar(get_all_medicoes_pacientes_ativos(risco=2)))
 
         elif requisicao == Requisicao.PACIENTES_URGENTE:
-            conexao.send(codificar(get_medicoes_paciente_ativos(risco=3, rows=1)))
+            conexao.send(codificar(get_all_medicoes_pacientes_ativos(risco=3)))
 
         elif requisicao == Requisicao.PACIENTES_POUCO_URGENTE:
-            conexao.send(codificar(get_medicoes_paciente_ativos(risco=4, rows=1)))
+            conexao.send(codificar(get_all_medicoes_pacientes_ativos(risco=4)))
 
         elif requisicao == Requisicao.PACIENTES_NAO_URGENTE:
-            conexao.send(codificar(get_medicoes_paciente_ativos(risco=5, rows=1)))
+            conexao.send(codificar(get_all_medicoes_pacientes_ativos(risco=5)))
 
         else:
             break
 
 
 if __name__ == "__main__":
+    if len(get_all_medicoes()) < NUMERO_DE_MEDICOES_MINIMAS_DB:
+        print("POUCOS VALORES NO BANCO DE DADOS PARA TREINAMENTO DA IA,"
+              " INSERINDO {} NOVOS VALORES...".format(NUMERO_DE_MEDICOES_MINIMAS_DB))
+        for x in range(NUMERO_DE_MEDICOES_MINIMAS_DB):
+            risco = randint(1, 5)
+            inserir_medicao(1, gerar_oxi(risco), gerar_bpm(risco), gerar_temp(risco), risco)
+        print("VALORES INSERIRDOS")
+
+    print("TREINANDO IA...")
+    IA = criar()
+
     PACIENTES_ATIVOS = []
     CHECAR_PACIENTES_ATIVOS = True
     Thread(target=checagem_pacientes_ativos).start()
@@ -112,6 +127,7 @@ if __name__ == "__main__":
 
         elif comando.upper() == "ABRIR PACIENTES":
             CHECAR_PACIENTES_ATIVOS = True
+            Thread(target=checagem_pacientes_ativos).start()
             print("SERVIDOR ABERTO PARA PACIENTES")
 
         elif comando.upper() == "LISTAR PACIENTES":
@@ -143,10 +159,18 @@ if __name__ == "__main__":
         elif comando.upper() == "ANALISAR RISCOS":
             print("ANALISANDO MEDICOES NAO CLASSIFICADAS")
             for medicao in get_all_medicoes_nao_classificadas():
-                risco = classificar(medicao[1:])
+                risco = IA.predict(array(medicao[1:]).reshape(1, -1))
                 inserir_risco_medicao(medicao[0], risco.to_int())
                 print("MEDICAO {} CLASSIFICADA".format(medicao[0]))
 
+        elif comando.upper() == "RETREINAR IA":
+            CHECAR_PACIENTES_ATIVOS = False
+            PACIENTES_ATIVOS.clear()
+            print("RETREINANDO IA, AGUARDE...")
+            IA = criar()
+            print("IA TREINADA")
+            CHECAR_PACIENTES_ATIVOS = True
+            Thread(target=checagem_pacientes_ativos).start()
+
         else:
             print("COMANDO INVALIDO")
-

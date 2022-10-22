@@ -1,16 +1,18 @@
-from random import randint, random
+from random import randint
 from sys import exit
 from threading import Thread
 from time import sleep
 
+from auxiliar import gerar_oxi, gerar_bpm, gerar_temp
 from constantes import TAXA_ATUALIZACAO_ARDUINO
 from db import ativar_paciente_medidor_virtual, get_paciente_medidor_virtual, \
-    inserir_medicao_medidor_virtual, desativar_paciente_medidor_virtual
+    inserir_medicao, desativar_paciente_medidor_virtual
 
 
 def enviar_medicoes():
     while MEDIR:
-        inserir_medicao_medidor_virtual(id_paciente[0], gerar_oxi(), gerar_BPM(), float(f'{gerar_temp():.2f}'))
+        inserir_medicao(id_paciente, gerar_oxi(nv_risco_alvo), gerar_bpm(nv_risco_alvo),
+                        float(f'{gerar_temp(nv_risco_alvo):.2f}'))
         sleep(TAXA_ATUALIZACAO_ARDUINO)
 
 
@@ -22,86 +24,7 @@ def novo_paciente() -> int:
     sleep(TAXA_ATUALIZACAO_ARDUINO)
 
     ativar_paciente_medidor_virtual(id_dispositivo)
-    return get_paciente_medidor_virtual(id_dispositivo)
-
-
-# TODO alterar metodo de geração
-def gerar_oxi():
-    if nv_risco_alvo == 5:
-        return randint(80, 100)
-
-    elif nv_risco_alvo == 4:
-        return randint(60, 80)
-
-    elif nv_risco_alvo == 3:
-        return randint(40, 60)
-
-    elif nv_risco_alvo == 2:
-        return randint(20, 40)
-
-    elif nv_risco_alvo == 1:
-        return randint(0, 20)
-
-
-# TODO alterar metodo de geração
-def gerar_BPM():
-    n = randint(0, 1)
-
-    if nv_risco_alvo == 5:
-        return randint(60, 80)
-
-    elif nv_risco_alvo == 4:
-        if n:
-            return randint(80, 100)
-        else:
-            return randint(40, 60)
-
-    elif nv_risco_alvo == 3:
-        if n:
-            return randint(100, 120)
-        else:
-            return randint(20, 40)
-
-    elif nv_risco_alvo == 2:
-        if n:
-            return randint(120, 140)
-        else:
-            return randint(10, 20)
-
-    elif nv_risco_alvo == 1:
-        if n:
-            return randint(140, 160)
-        else:
-            return randint(0, 10)
-
-
-# TODO alterar metodo de geração
-def gerar_temp():
-    n = randint(0, 1)
-
-    if nv_risco_alvo == 5:
-        return 37 + (random()/2)
-
-    elif nv_risco_alvo == 4:
-        return 37 + random()
-
-    elif nv_risco_alvo == 3:
-        if n:
-            return 38 + random()
-        else:
-            return 36 + random()
-
-    elif nv_risco_alvo == 2:
-        if n:
-            return 39 + random()
-        else:
-            return 35 + random()
-
-    elif nv_risco_alvo == 1:
-        if n:
-            return 40 + random()
-        else:
-            return 34 + random()
+    return get_paciente_medidor_virtual(id_dispositivo)[0]
 
 
 if __name__ == "__main__":
@@ -113,6 +36,7 @@ if __name__ == "__main__":
 
     Thread(target=enviar_medicoes).start()
 
+    print("MEDIDOR VIRTUAL INICIADO")
     while True:
         comando = input("MEDIDOR VIRTUAL ACEITANDO COMANDOS...\n")
 

@@ -50,23 +50,29 @@ def conexao_sistema_medico(conexao, endereco):
         if requisicao == Requisicao.DESCONECTAR:
             break
 
-        # TODO fix
         elif requisicao == Requisicao.PROXIMO_PACIENTE:
             medicoes_pacientes = get_n_medicoes_pacientes_ativos()
 
-            pacientes = []
-            risco_geral = []
+            if medicoes_pacientes:
+                pacientes = []
+                for x in range(len(medicoes_pacientes)):
+                    if medicoes_pacientes[x]:
+                        pacientes.append(medicoes_pacientes[x][0][-1])
 
-            for medicoes_paciente in medicoes_pacientes:
-                pacientes.append(medicoes_paciente[0][0])
+                riscos = []
+                for medicoes_paciente in medicoes_pacientes:
+                    risco_soma = 0
+                    for medicao_paciente in medicoes_paciente:
+                        risco_soma += medicao_paciente[-2]
 
-                risco = 0
-                for medicao in medicoes_paciente:
-                    risco += medicao[-1]
-                risco_geral.append(risco)
+                    if medicoes_paciente:
+                        riscos.append(risco_soma)
 
-            indice = risco_geral.index(min(risco_geral))
-            conexao.send(codificar([pacientes[indice], risco_geral[indice]]))
+                indice = riscos.index(min(riscos))
+                conexao.send(codificar([pacientes[indice], riscos[indice]]))
+
+            else:
+                conexao.send(codificar([]))
 
         elif requisicao == Requisicao.PACIENTES_EMERGENCIA:
             conexao.send(codificar(get_all_medicoes_pacientes_ativos(risco=1)))

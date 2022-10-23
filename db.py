@@ -131,14 +131,15 @@ def get_n_medicoes_pacientes_ativos(n_medicoes=NUMERO_DE_MEDICOES_PARA_DETERMINA
 
     pacientes = []
     for paciente in ativos:
-        date = datetime.now()
-        medicoes = []
-        for x in range(n_medicoes):
-            medicao = __select(conexao, "idMedicao, MAX(dtMedicao), risco", "medicoes",
-                               "idPaciente = {} AND dtMedicao < '{}'".format(paciente, date), desempacotar=True)
-            date = medicao[1]
-            medicoes.append(medicao)
-        pacientes.append(medicoes)
+        medicoes_utilizadas = []
+        medicoes = __select(conexao, "idMedicao, dtMedicao, risco, idPaciente", "medicoes",
+                            "idPaciente = {}".format(paciente), desempacotar=True)
+
+        if medicoes and len(medicoes) >= 3:
+            for x in range(n_medicoes):
+                medicoes_utilizadas.append(medicoes.pop(-1))
+
+        pacientes.append(medicoes_utilizadas)
     __desconectar(conexao)
     return pacientes
 

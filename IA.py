@@ -1,5 +1,4 @@
 from numpy import array
-from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVC
 
@@ -26,9 +25,6 @@ def __gerar_modelo_svm(dados: list, num_registros: int):
     return SVC().fit(X, y)
 
 
-def __gerar_modelo_kmeans(dados: list): return KMeans(n_clusters=5).fit(dados)
-
-
 def criar():
     if get_all_medicoes_nao_classificadas():
         corretivo_medicoes_nao_classificadas()
@@ -40,9 +36,6 @@ def criar():
     elif METODO_DE_CLASSIFICACAO == "SVM":
         medicoes = get_all_medicoes()
         return __gerar_modelo_svm(medicoes, len(medicoes))
-
-    elif METODO_DE_CLASSIFICACAO == "KM":
-        return __gerar_modelo_kmeans(get_all_medicoes())
 
     else:
         raise Exception("MODELO INVALIDO")

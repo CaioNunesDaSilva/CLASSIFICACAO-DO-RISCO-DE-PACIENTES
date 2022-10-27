@@ -4,7 +4,7 @@ from sys import exit
 from threading import Thread
 from time import sleep
 
-from numpy import array
+from numpy import array, ndarray
 
 from IA import criar
 from auxiliar import codificar, descodificar, Requisicao, gerar_temp, gerar_oxi, gerar_bpm
@@ -37,8 +37,11 @@ def analisar_medicoes(paciente: int):
         for medicao in medicoes:
 
             risco = IA.predict(array(medicao[1:]).reshape(1, -1))
-
-            inserir_risco_medicao(medicao[0], risco.to_int())
+            if isinstance(risco, ndarray):
+                risco = risco[0]
+                inserir_risco_medicao(medicao[0], risco)
+            else:
+                inserir_risco_medicao(medicao[0], risco.to_int())
 
         sleep(TAXA_ATUALIZACAO_ARDUINO)
 

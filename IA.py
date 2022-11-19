@@ -38,4 +38,4 @@ def criar():
         return __gerar_modelo_svm(medicoes, len(medicoes))
 
     else:
-        raise Exception("MODELO INVALIDO")
+        raise ValueError("MODELO PARA TREINAMENTO DA IA INVALIDO ")

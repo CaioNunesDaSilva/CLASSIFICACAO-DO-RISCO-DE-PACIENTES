@@ -1,16 +1,26 @@
-from random import randint
-from socket import socket, AF_INET, SOCK_STREAM
-from sys import exit
-from threading import Thread
-from time import sleep
+try:
+    from random import randint
+    from socket import socket, AF_INET, SOCK_STREAM
+    from sys import exit
+    from threading import Thread
+    from time import sleep
 
-from numpy import array, ndarray
+    from _socket import gaierror
+    from mysql.connector.errors import ProgrammingError, DatabaseError
+    from numpy import array, ndarray
 
-from IA import criar
-from auxiliar import codificar, descodificar, Requisicao, gerar_temp, gerar_oxi, gerar_bpm
-from constantes import TAXA_ATUALIZACAO_ARDUINO, SOCKET_ENDERECO, SOCKET_PORTA, BUFFER, NUMERO_DE_MEDICOES_MINIMAS_DB
-from db import get_pacientes_ativos_db, inserir_risco_medicao, get_n_medicoes_pacientes_ativos, \
-    get_all_medicoes_pacientes_ativos, get_all_medicoes_nao_classificadas, get_all_medicoes, inserir_medicao
+    from IA import criar
+    from auxiliar import codificar, descodificar, Requisicao, gerar_temp, gerar_oxi, gerar_bpm
+    from constantes import TAXA_ATUALIZACAO_ARDUINO, SOCKET_ENDERECO, SOCKET_PORTA, BUFFER, \
+        NUMERO_DE_MEDICOES_MINIMAS_DB
+    from db import get_pacientes_ativos_db, inserir_risco_medicao, get_n_medicoes_pacientes_ativos, \
+        get_all_medicoes_pacientes_ativos, get_all_medicoes_nao_classificadas, get_all_medicoes, inserir_medicao
+
+except ModuleNotFoundError as error:
+    print("problema na iniciacao do servidor")
+    print("detectada falha na importacao de modulos utilizados")
+    input(error)
+    exit(-1)
 
 
 def checagem_pacientes_ativos():
@@ -21,7 +31,7 @@ def checagem_pacientes_ativos():
         for paciente in pacientes_ativos_db:
             if paciente not in PACIENTES_ATIVOS:
                 PACIENTES_ATIVOS.append(paciente)
-                Thread(target=analisar_medicoes, args=(paciente, )).start()
+                Thread(target=analisar_medicoes, args=(paciente,)).start()
 
         for paciente in PACIENTES_ATIVOS:
             if paciente not in pacientes_ativos_db:
@@ -97,26 +107,93 @@ def conexao_sistema_medico(conexao, endereco):
 
 
 if __name__ == "__main__":
-    if len(get_all_medicoes()) < NUMERO_DE_MEDICOES_MINIMAS_DB:
-        print("POUCOS VALORES NO BANCO DE DADOS PARA TREINAMENTO DA IA,"
-              " INSERINDO {} NOVOS VALORES...".format(NUMERO_DE_MEDICOES_MINIMAS_DB))
-        for x in range(NUMERO_DE_MEDICOES_MINIMAS_DB):
-            risco = randint(1, 5)
-            inserir_medicao(1, gerar_oxi(risco), gerar_bpm(risco), gerar_temp(risco), risco)
-        print("VALORES INSERIRDOS")
+    try:
+        if len(get_all_medicoes()) < NUMERO_DE_MEDICOES_MINIMAS_DB:
+            print("POUCOS VALORES NO BANCO DE DADOS PARA TREINAMENTO DA IA,"
+                  " INSERINDO {} NOVOS VALORES...".format(NUMERO_DE_MEDICOES_MINIMAS_DB))
+            for x in range(NUMERO_DE_MEDICOES_MINIMAS_DB):
+                risco = randint(1, 5)
+                inserir_medicao(1, gerar_oxi(risco), gerar_bpm(risco), gerar_temp(risco), risco)
+            print("VALORES INSERIRDOS")
 
-    print("TREINANDO IA...")
-    IA = criar()
+        print("TREINANDO IA...")
+        IA = criar()
 
-    PACIENTES_ATIVOS = []
-    CHECAR_PACIENTES_ATIVOS = True
-    Thread(target=checagem_pacientes_ativos).start()
+        PACIENTES_ATIVOS = []
+        CHECAR_PACIENTES_ATIVOS = True
+        Thread(target=checagem_pacientes_ativos).start()
 
-    CONEXAO_SISTEMA_MEDICO = True
-    soquete = socket(AF_INET, SOCK_STREAM)
-    soquete.bind((SOCKET_ENDERECO, SOCKET_PORTA))
-    soquete.settimeout(10)
-    soquete.listen()
+        CONEXAO_SISTEMA_MEDICO = True
+        soquete = socket(AF_INET, SOCK_STREAM)
+        soquete.bind((SOCKET_ENDERECO, SOCKET_PORTA))
+        soquete.settimeout(10)
+        soquete.listen()
+
+    except ProgrammingError as error:
+        print("problema na iniciacao do servidor")
+        print("detectada falha com o banco de dados")
+        try:
+            CHECAR_PACIENTES_ATIVOS = False
+            CONEXAO_SISTEMA_MEDICO = False
+        except Exception as e:
+            print("variaveis de controle nao inicializadas...")
+        input(error)
+        exit(-1)
+
+    except DatabaseError as error:
+        print("problema na iniciacao do servidor")
+        print("detectada falha com o banco de dados")
+        try:
+            CHECAR_PACIENTES_ATIVOS = False
+            CONEXAO_SISTEMA_MEDICO = False
+        except Exception as e:
+            print("variaveis de controle nao inicializadas...")
+        input(error)
+        exit(-1)
+
+    except ValueError as error:
+        print("problema na iniciacao do servidor")
+        print("problema no treinamento da IA, pro favor cheque o modulo IA.py")
+        try:
+            CHECAR_PACIENTES_ATIVOS = False
+            CONEXAO_SISTEMA_MEDICO = False
+        except Exception as e:
+            print("variaveis de controle nao inicializadas...")
+        input(error)
+        exit(-1)
+
+    except gaierror as error:
+        print("problema na iniciacao do servidor")
+        print("problema na definicao do endereco do soquete, verifique o modulo constantes.py")
+        try:
+            CHECAR_PACIENTES_ATIVOS = False
+            CONEXAO_SISTEMA_MEDICO = False
+        except Exception as e:
+            print("variaveis de controle nao inicializadas...")
+        input(error)
+        exit(-1)
+
+    except TypeError as error:
+        print("problema na iniciacao do servidor")
+        print("problema com valor da porta do soquete, verifique o modulo constantes.py")
+        try:
+            CHECAR_PACIENTES_ATIVOS = False
+            CONEXAO_SISTEMA_MEDICO = False
+        except Exception as e:
+            print("variaveis de controle nao inicializadas...")
+        input(error)
+        exit(-1)
+
+    except OverflowError as error:
+        print("problema na iniciacao do servidor")
+        print("problema com valor da porta do soquete, verifique o modulo constantes.py")
+        try:
+            CHECAR_PACIENTES_ATIVOS = False
+            CONEXAO_SISTEMA_MEDICO = False
+        except Exception as e:
+            print("variaveis de controle nao inicializadas...")
+        input(error)
+        exit(-1)
 
     while True:
         comando = input("SERVIDOR ACEITANDO COMANDOS...\n")

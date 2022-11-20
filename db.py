@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import mysql.connector as mysql
 
 from constantes import BANCO_DE_DADOS_ENDERECO, BANCO_DE_DADOS_NOME, BANCO_DE_DADOS_USUARIO, BANCO_DE_DADOS_SENHA, \
@@ -135,9 +133,14 @@ def get_n_medicoes_pacientes_ativos(n_medicoes=NUMERO_DE_MEDICOES_PARA_DETERMINA
         medicoes = __select(conexao, "idMedicao, dtMedicao, risco, idPaciente", "medicoes",
                             "idPaciente = {}".format(paciente), desempacotar=True)
 
-        if medicoes and len(medicoes) >= 3:
-            for x in range(n_medicoes):
-                medicoes_utilizadas.append(medicoes.pop(-1))
+        if len(medicoes) >= n_medicoes:
+            count = 0
+            while count < n_medicoes:
+                if medicoes[-1][-2]:
+                    medicoes_utilizadas.append(medicoes.pop(-1))
+                    count += 1
+                else:
+                    medicoes.pop(-1)
 
         pacientes.append(medicoes_utilizadas)
     __desconectar(conexao)

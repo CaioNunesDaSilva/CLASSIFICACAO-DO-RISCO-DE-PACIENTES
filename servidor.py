@@ -12,12 +12,12 @@ try:
     from IA import criar
     from auxiliar import codificar, descodificar, Requisicao, gerar_temp, gerar_oxi, gerar_bpm
     from constantes import TAXA_ATUALIZACAO_ARDUINO, SOCKET_ENDERECO, SOCKET_PORTA, BUFFER, \
-        NUMERO_DE_MEDICOES_MINIMAS_DB
+        NUMERO_DE_MEDICOES_MINIMAS_DB, NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO
     from db import get_pacientes_ativos_db, inserir_risco_medicao, get_n_medicoes_pacientes_ativos, \
         get_all_medicoes_pacientes_ativos, get_all_medicoes_nao_classificadas, get_all_medicoes, inserir_medicao
 
 except ModuleNotFoundError as error:
-    print("problema na iniciacao do servidor")
+    print("problema na iniciacao do Servidor")
     print("detectada falha na importacao de modulos utilizados")
     input(error)
     exit(-1)
@@ -66,24 +66,21 @@ def conexao_sistema_medico(conexao, endereco):
         elif requisicao == Requisicao.PROXIMO_PACIENTE:
             medicoes_pacientes = get_n_medicoes_pacientes_ativos()
 
-            if medicoes_pacientes:
-                pacientes = []
-                for x in range(len(medicoes_pacientes)):
-                    if medicoes_pacientes[x]:
-                        pacientes.append(medicoes_pacientes[x][0][-1])
+            arriscado = 6*NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO
+            pacienteID = 0
+            for pacientes in medicoes_pacientes:
+                if pacientes:
+                    risco_geral = 0
+                    paciente = 0
+                    for medicao in pacientes:
+                        risco_geral += medicao[2]
+                        paciente = medicao[-1]
+                    if risco_geral < arriscado:
+                        arriscado = risco_geral
+                        pacienteID = paciente
 
-                riscos = []
-                for medicoes_paciente in medicoes_pacientes:
-                    risco_soma = 0
-                    for medicao_paciente in medicoes_paciente:
-                        risco_soma += medicao_paciente[-2]
-
-                    if medicoes_paciente:
-                        riscos.append(risco_soma)
-
-                indice = riscos.index(min(riscos))
-                conexao.send(codificar([pacientes[indice], riscos[indice]]))
-
+            if not pacienteID == 0 and not arriscado == 6*NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO:
+                conexao.send(codificar([pacienteID, arriscado/NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO]))
             else:
                 conexao.send(codificar([]))
 
@@ -107,6 +104,8 @@ def conexao_sistema_medico(conexao, endereco):
 
 
 if __name__ == "__main__":
+    print("SERVIDOR INICIANDO...")
+
     try:
         if len(get_all_medicoes()) < NUMERO_DE_MEDICOES_MINIMAS_DB:
             print("POUCOS VALORES NO BANCO DE DADOS PARA TREINAMENTO DA IA,"

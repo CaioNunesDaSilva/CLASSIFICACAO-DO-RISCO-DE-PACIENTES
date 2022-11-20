@@ -1,12 +1,19 @@
-from random import randint
-from sys import exit
-from threading import Thread
-from time import sleep
+try:
+    from random import randint
+    from sys import exit
+    from threading import Thread
+    from time import sleep
 
-from auxiliar import gerar_oxi, gerar_bpm, gerar_temp
-from constantes import TAXA_ATUALIZACAO_ARDUINO
-from db import ativar_paciente_medidor_virtual, get_paciente_medidor_virtual, \
-    inserir_medicao, desativar_paciente_medidor_virtual
+    from auxiliar import gerar_oxi, gerar_bpm, gerar_temp
+    from constantes import TAXA_ATUALIZACAO_ARDUINO
+    from db import ativar_paciente_medidor_virtual, get_paciente_medidor_virtual, \
+        inserir_medicao, desativar_paciente_medidor_virtual
+
+except ModuleNotFoundError as error:
+    print("problema na iniciacao do Medidor Virtual")
+    print("detectada falha na importacao de modulos utilizados")
+    input(error)
+    exit(-1)
 
 
 def enviar_medicoes():
@@ -28,6 +35,8 @@ def novo_paciente() -> int:
 
 
 if __name__ == "__main__":
+    print("MEDIDOR VIRTUAL INICIANDO...")
+
     id_dispositivo = randint(1000, 9999)
     id_paciente = novo_paciente()
 

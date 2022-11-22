@@ -65,7 +65,7 @@ if __name__ == "__main__":
                 print("PROXIMO PACIENTE,"
                       " COM BASE NAS ULTIMAS {} MEDICOES:".format(NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO))
                 print("ID: {}".format(paciente[0]))
-                print("RISCO MEDIO: {}".format(paciente[1] / NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO))
+                print("RISCO MEDIO: {}".format(paciente[1]))
             else:
                 print("DADOS OU PACIENTES INSUFICIENTES PARA CATEGORIZACAO, AGUARDE OU CONECTE NOVOS MEDIDORES...")
 

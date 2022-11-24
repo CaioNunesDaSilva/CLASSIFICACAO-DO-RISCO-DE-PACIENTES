@@ -86,25 +86,38 @@ def conexao_sistema_medico(conexao, endereco):
             break
 
         elif requisicao == Requisicao.PROXIMO_PACIENTE:
-            medicoes_pacientes = get_n_medicoes_pacientes_ativos()
+            try:
+                medicoes_pacientes = get_n_medicoes_pacientes_ativos()
 
-            arriscado = 6*NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO
-            pacienteID = 0
-            for pacientes in medicoes_pacientes:
-                if pacientes:
-                    risco_geral = 0
-                    paciente = 0
-                    for medicao in pacientes:
-                        risco_geral += medicao[2]
-                        paciente = medicao[-1]
-                    if risco_geral < arriscado:
-                        arriscado = risco_geral
-                        pacienteID = paciente
+                arriscado = 6*NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO
+                pacienteID = 0
+                for pacientes in medicoes_pacientes:
+                    if pacientes:
+                        risco_geral = 0
+                        paciente = 0
+                        for medicao in pacientes:
+                            risco_geral += medicao[2]
+                            paciente = medicao[-1]
+                        if risco_geral < arriscado:
+                            arriscado = risco_geral
+                            pacienteID = paciente
 
-            if not pacienteID == 0 and not arriscado == 6*NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO:
-                conexao.send(codificar([pacienteID, arriscado/NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO]))
-            else:
-                conexao.send(codificar([]))
+                if not pacienteID == 0 and not arriscado == 6*NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO:
+                    conexao.send(codificar([pacienteID, arriscado/NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO]))
+                else:
+                    conexao.send(codificar([]))
+
+            except TypeError as error:
+                try:
+                    showerror("medicao invalida", "paciente: {}\nmedicao: {}\n{}".format(paciente, medicao, error))
+                except Exception:
+                    showerror("medicao invalida", error)
+
+            except IndexError as error:
+                try:
+                    showerror("medicao invalida", "paciente: {}\nmedicao: {}\n{}".format(paciente, medicao, error))
+                except Exception:
+                    showerror("medicao invalida", error)
 
         elif requisicao == Requisicao.PACIENTES_EMERGENCIA:
             conexao.send(codificar(get_all_medicoes_pacientes_ativos(risco=1)))

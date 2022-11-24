@@ -1,12 +1,12 @@
 try:
+    from tkinter import Tk, Button, Label
+    from tkinter.messagebox import showinfo, showerror
+
     from random import randint
     from sys import exit
     from threading import Thread
     from time import sleep
     import os
-
-    from tkinter import Tk, Button, Label
-    from tkinter.messagebox import showinfo, showerror
 
     from auxiliar import gerar_oxi, gerar_bpm, gerar_temp
     from constantes import TAXA_ATUALIZACAO_ARDUINO

@@ -1,4 +1,7 @@
 try:
+    from tkinter import Tk, Button, Label
+    from tkinter.messagebox import showinfo, showerror
+
     from random import randint
     from socket import socket, AF_INET, SOCK_STREAM
     from sys import exit
@@ -17,10 +20,14 @@ try:
         get_all_medicoes_pacientes_ativos, get_all_medicoes_nao_classificadas, get_all_medicoes, inserir_medicao
 
 except ModuleNotFoundError as error:
-    print("problema na iniciacao do Servidor")
-    print("detectada falha na importacao de modulos utilizados")
-    input(error)
-    exit(-1)
+    try:
+        showerror("detectada falha na importacao de modulos utilizados", error)
+        exit(1)
+    except NameError:
+        print("problema na iniciacao do Servidor")
+        print("detectada falha na importacao de modulos utilizados")
+        input(error)
+        exit(1)
 
 
 def checagem_pacientes_ativos():
@@ -41,17 +48,32 @@ def checagem_pacientes_ativos():
 
 
 def analisar_medicoes(paciente: int):
+    global lb_oxi
+    global lb_bpm
+    global lb_temp
+    global lb_risco
+
     while paciente in PACIENTES_ATIVOS:
-
         medicoes = get_all_medicoes_nao_classificadas(paciente)
-        for medicao in medicoes:
 
+        for medicao in medicoes:
             risco = IA.predict(array(medicao[1:]).reshape(1, -1))
             if isinstance(risco, ndarray):
                 risco = risco[0]
                 inserir_risco_medicao(medicao[0], risco)
             else:
                 inserir_risco_medicao(medicao[0], risco.to_int())
+
+            try:
+                lb_oxi.config(text="Oxigenacao: {}%".format(medicao[1]))
+                lb_bpm.config(text="BPM: {}".format(medicao[2]))
+                lb_temp.config(text="temperatura: {}C".format(medicao[3]))
+                lb_risco.config(text="risco nivel {}".format(risco.value))
+            except Exception as error:
+                lb_oxi.config(text="N/A")
+                lb_bpm.config(text="N/A")
+                lb_temp.config(text="N/A")
+                lb_risco.config(text="N/A")
 
         sleep(TAXA_ATUALIZACAO_ARDUINO)
 
@@ -103,24 +125,95 @@ def conexao_sistema_medico(conexao, endereco):
             break
 
 
-if __name__ == "__main__":
-    print("SERVIDOR INICIANDO...")
+def sair():
+    global CHECAR_PACIENTES_ATIVOS
+    global CONEXAO_SISTEMA_MEDICO
+    global PACIENTES_ATIVOS
+    global soquete
+    CHECAR_PACIENTES_ATIVOS = False
+    CONEXAO_SISTEMA_MEDICO = False
+    PACIENTES_ATIVOS.clear()
+    soquete.close()
+    exit(0)
 
+
+def fechar_paciente():
+    global CHECAR_PACIENTES_ATIVOS
+    global PACIENTES_ATIVOS
+    CHECAR_PACIENTES_ATIVOS = False
+    PACIENTES_ATIVOS.clear()
+
+
+def abrir_paciente():
+    global CHECAR_PACIENTES_ATIVOS
+    if not CHECAR_PACIENTES_ATIVOS:
+        CHECAR_PACIENTES_ATIVOS = True
+        Thread(target=checagem_pacientes_ativos).start()
+
+
+def listar_pacientes():
+    global PACIENTES_ATIVOS
+    lista = ""
+    for id_paciente in PACIENTES_ATIVOS:
+        lista = lista + "id: {}\n".format(id_paciente)
+    showinfo(message=lista)
+
+
+def fechar_medico():
+    global CONEXAO_SISTEMA_MEDICO
+    global soquete
+    CONEXAO_SISTEMA_MEDICO = False
+    soquete.close()
+
+
+def abrir_medico():
+    global CONEXAO_SISTEMA_MEDICO
+    global soquete
+    CONEXAO_SISTEMA_MEDICO = True
+    soquete = socket(AF_INET, SOCK_STREAM)
+    soquete.bind((SOCKET_ENDERECO, SOCKET_PORTA))
+    soquete.settimeout(10)
+    soquete.listen()
+
+
+def conectar_medico():
+    try:
+        conexao, endereco = soquete.accept()
+        Thread(target=conexao_sistema_medico, args=(conexao, endereco)).start()
+        showinfo(message=" SISTEMA MEDICO CONECTADO NO ENDERECO:{}, PORTA:{}".format(SOCKET_ENDERECO, SOCKET_PORTA))
+
+    except Exception as error:
+        showerror(title=error, message="nenhum sistema medico encontrado")
+
+
+def analisar_riscos():
+    global IA
+    for medicao in get_all_medicoes_nao_classificadas():
+        risco = IA.predict(array(medicao[1:]).reshape(1, -1))
+        inserir_risco_medicao(medicao[0], risco.to_int())
+
+
+def retreinar_ia():
+    global CHECAR_PACIENTES_ATIVOS
+    global PACIENTES_ATIVOS
+    global IA
+    CHECAR_PACIENTES_ATIVOS = False
+    PACIENTES_ATIVOS.clear()
+    IA = criar()
+    CHECAR_PACIENTES_ATIVOS = True
+    Thread(target=checagem_pacientes_ativos).start()
+
+
+if __name__ == "__main__":
     try:
         if len(get_all_medicoes()) < NUMERO_DE_MEDICOES_MINIMAS_DB:
-            print("POUCOS VALORES NO BANCO DE DADOS PARA TREINAMENTO DA IA,"
-                  " INSERINDO {} NOVOS VALORES...".format(NUMERO_DE_MEDICOES_MINIMAS_DB))
+            showinfo(message="POUCOS VALORES NO BANCO DE DADOS PARA TREINAMENTO DA IA,"
+                             "INSERINDO {} NOVOS VALORES...".format(NUMERO_DE_MEDICOES_MINIMAS_DB))
             for x in range(NUMERO_DE_MEDICOES_MINIMAS_DB):
                 risco = randint(1, 5)
                 inserir_medicao(1, gerar_oxi(risco), gerar_bpm(risco), gerar_temp(risco), risco)
-            print("VALORES INSERIRDOS")
 
-        print("TREINANDO IA...")
         IA = criar()
-
-        PACIENTES_ATIVOS = []
-        CHECAR_PACIENTES_ATIVOS = True
-        Thread(target=checagem_pacientes_ativos).start()
 
         CONEXAO_SISTEMA_MEDICO = True
         soquete = socket(AF_INET, SOCK_STREAM)
@@ -128,134 +221,104 @@ if __name__ == "__main__":
         soquete.settimeout(10)
         soquete.listen()
 
+        PACIENTES_ATIVOS = []
+        CHECAR_PACIENTES_ATIVOS = True
+        Thread(target=checagem_pacientes_ativos).start()
+
     except ProgrammingError as error:
-        print("problema na iniciacao do servidor")
-        print("detectada falha com o banco de dados")
+        showerror("problema na iniciacao do servidor", "detectada falha com o banco de dados\n{}".format(error))
         try:
             CHECAR_PACIENTES_ATIVOS = False
             CONEXAO_SISTEMA_MEDICO = False
         except Exception as e:
-            print("variaveis de controle nao inicializadas...")
-        input(error)
-        exit(-1)
+            exit(1)
+        exit(1)
 
     except DatabaseError as error:
-        print("problema na iniciacao do servidor")
-        print("detectada falha com o banco de dados")
+        showerror("problema na iniciacao do servidor", "detectada falha com o banco de dados\n{}".format(error))
         try:
             CHECAR_PACIENTES_ATIVOS = False
             CONEXAO_SISTEMA_MEDICO = False
         except Exception as e:
-            print("variaveis de controle nao inicializadas...")
-        input(error)
-        exit(-1)
+            exit(1)
+        exit(1)
 
     except ValueError as error:
-        print("problema na iniciacao do servidor")
-        print("problema no treinamento da IA, pro favor cheque o modulo IA.py")
+        showerror("problema na iniciacao do servidor", "problema no treinamento da IA\n{}".format(error))
         try:
             CHECAR_PACIENTES_ATIVOS = False
             CONEXAO_SISTEMA_MEDICO = False
         except Exception as e:
-            print("variaveis de controle nao inicializadas...")
-        input(error)
-        exit(-1)
+            exit(1)
+        exit(1)
 
     except gaierror as error:
-        print("problema na iniciacao do servidor")
-        print("problema na definicao do endereco do soquete, verifique o modulo constantes.py")
+        showerror("problema na iniciacao do servidor", "problema na definicao do endereco do soquete\n{}".format(error))
         try:
             CHECAR_PACIENTES_ATIVOS = False
             CONEXAO_SISTEMA_MEDICO = False
         except Exception as e:
-            print("variaveis de controle nao inicializadas...")
-        input(error)
-        exit(-1)
+            exit(1)
+        exit(1)
 
     except TypeError as error:
-        print("problema na iniciacao do servidor")
-        print("problema com valor da porta do soquete, verifique o modulo constantes.py")
+        showerror("problema na iniciacao do servidor", "problema com valor da porta do soquete\n{}".format(error))
         try:
             CHECAR_PACIENTES_ATIVOS = False
             CONEXAO_SISTEMA_MEDICO = False
         except Exception as e:
-            print("variaveis de controle nao inicializadas...")
-        input(error)
-        exit(-1)
+            exit(1)
+        exit(1)
 
     except OverflowError as error:
-        print("problema na iniciacao do servidor")
-        print("problema com valor da porta do soquete, verifique o modulo constantes.py")
+        showerror("problema na iniciacao do servidor", "problema com valor da porta do soquete\n{}".format(error))
         try:
             CHECAR_PACIENTES_ATIVOS = False
             CONEXAO_SISTEMA_MEDICO = False
         except Exception as e:
-            print("variaveis de controle nao inicializadas...")
-        input(error)
-        exit(-1)
+            exit(1)
+        exit(1)
 
-    while True:
-        comando = input("SERVIDOR ACEITANDO COMANDOS...\n")
-
-        if comando.upper() == "SAIR":
+    except Exception as error:
+        showerror("problema na iniciacao do servidor", "Erro inesperado\n{}".format(error))
+        try:
             CHECAR_PACIENTES_ATIVOS = False
             CONEXAO_SISTEMA_MEDICO = False
-            PACIENTES_ATIVOS.clear()
-            soquete.close()
-            exit(0)
-            print("TERMINANDO APLICACAO, AGUARDE...")
+        except Exception as e:
+            exit(1)
+        exit(1)
 
-        elif comando.upper() == "FECHAR PACIENTES":
-            CHECAR_PACIENTES_ATIVOS = False
-            PACIENTES_ATIVOS.clear()
-            print("SERVIDOR FECHADO PARA PACIENTES")
+    janela = Tk()
+    janela.title("Servidor")
+    janela.protocol("WM_DELETE_WINDOW", sair)
 
-        elif comando.upper() == "ABRIR PACIENTES":
-            CHECAR_PACIENTES_ATIVOS = True
-            Thread(target=checagem_pacientes_ativos).start()
-            print("SERVIDOR ABERTO PARA PACIENTES")
+    med_txt = Label(janela, text="ultima medicao clasificada")
+    med_txt.grid(column=1, row=0)
 
-        elif comando.upper() == "LISTAR PACIENTES":
-            print("----------")
-            for id_paciente in PACIENTES_ATIVOS:
-                print("id: {}".format(id_paciente))
-            print("----------")
+    lb_oxi = Label(janela, text="N/A")
+    lb_oxi.grid(column=0, row=1)
+    lb_bpm = Label(janela, text="N/A")
+    lb_bpm.grid(column=1, row=1)
+    lb_temp = Label(janela, text="N/A")
+    lb_temp.grid(column=2, row=1)
+    lb_risco = Label(janela, text="N/A")
+    lb_risco.grid(column=1, row=2)
 
-        elif comando.upper() == "CONECTAR MEDICO":
-            print("CONECTANDO COM SISTEMA MEDICO NO ENDERECO:{}, PORTA:{}".format(SOCKET_ENDERECO, SOCKET_PORTA))
-            conexao, endereco = soquete.accept()
-            print("SISTEMA MEDICO ENCONTRADO")
-            Thread(target=conexao_sistema_medico, args=(conexao, endereco)).start()
-            print("SISTEMA MEDICO CONECTADO")
+    btn_fechar_pacientes = Button(janela, text="Parar classificacao", command=fechar_paciente)
+    btn_fechar_pacientes.grid(column=0, row=3)
+    btn_abrir_pacientes = Button(janela, text="retomar classificacao", command=abrir_paciente)
+    btn_abrir_pacientes.grid(column=1, row=3)
+    btn_listar_pacientes = Button(janela, text="lista de pacientes ativos", command=listar_pacientes)
+    btn_listar_pacientes.grid(column=2, row=3)
+    btn_fechar_medico = Button(janela, text="fechar socket do sistema medico", command=fechar_medico)
+    btn_fechar_medico.grid(column=0, row=4)
+    btn_abrir_medico = Button(janela, text="abrir socket do sistema medico", command=abrir_medico)
+    btn_abrir_medico.grid(column=1, row=4)
+    btn_conectar_medico = Button(janela, text="aceitar conexao do sistema medico", command=conectar_medico)
+    btn_conectar_medico.grid(column=2, row=4)
+    btn_analisar_riscos = Button(janela, text="analisar riscos pendentes", command=analisar_riscos)
+    btn_analisar_riscos.grid(column=0, row=5)
+    btn_retreinar_ia = Button(janela, text="retreinar inteligencia artificial", command=retreinar_ia)
+    btn_retreinar_ia.grid(column=2, row=5)
 
-        elif comando.upper() == "FECHAR MEDICO":
-            CONEXAO_SISTEMA_MEDICO = False
-            soquete.close()
-            print("SERVIDOR FECHADO PARA SISTEMAS MEDICOS")
-
-        elif comando.upper() == "ABRIR MEDICO":
-            CONEXAO_SISTEMA_MEDICO = True
-            soquete = socket(AF_INET, SOCK_STREAM)
-            soquete.bind((SOCKET_ENDERECO, SOCKET_PORTA))
-            soquete.settimeout(10)
-            soquete.listen()
-            print("SERVIDOR ABERTO PARA SISTEMAS MEDICOS")
-
-        elif comando.upper() == "ANALISAR RISCOS":
-            print("ANALISANDO MEDICOES NAO CLASSIFICADAS")
-            for medicao in get_all_medicoes_nao_classificadas():
-                risco = IA.predict(array(medicao[1:]).reshape(1, -1))
-                inserir_risco_medicao(medicao[0], risco.to_int())
-                print("MEDICAO {} CLASSIFICADA".format(medicao[0]))
-
-        elif comando.upper() == "RETREINAR IA":
-            CHECAR_PACIENTES_ATIVOS = False
-            PACIENTES_ATIVOS.clear()
-            print("RETREINANDO IA, AGUARDE...")
-            IA = criar()
-            print("IA TREINADA")
-            CHECAR_PACIENTES_ATIVOS = True
-            Thread(target=checagem_pacientes_ativos).start()
-
-        else:
-            print("COMANDO INVALIDO")
+    janela.mainloop()

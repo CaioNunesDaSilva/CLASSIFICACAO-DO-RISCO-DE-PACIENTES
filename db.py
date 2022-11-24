@@ -131,9 +131,9 @@ def get_n_medicoes_pacientes_ativos(n_medicoes=NUMERO_DE_MEDICOES_PARA_DETERMINA
     for paciente in ativos:
         medicoes_utilizadas = []
         medicoes = __select(conexao, "idMedicao, dtMedicao, risco, idPaciente", "medicoes",
-                            "idPaciente = {}".format(paciente), desempacotar=True)
+                            "idPaciente = {}".format(paciente))
 
-        if len(medicoes) >= n_medicoes:
+        if len(medicoes) >= n_medicoes and medicoes:
             count = 0
             while count < n_medicoes:
                 if medicoes[-1][-2]:
@@ -141,6 +141,10 @@ def get_n_medicoes_pacientes_ativos(n_medicoes=NUMERO_DE_MEDICOES_PARA_DETERMINA
                     count += 1
                 else:
                     medicoes.pop(-1)
+                    if len(medicoes) >= n_medicoes - count:
+                        continue
+                    else:
+                        break
 
         pacientes.append(medicoes_utilizadas)
     __desconectar(conexao)

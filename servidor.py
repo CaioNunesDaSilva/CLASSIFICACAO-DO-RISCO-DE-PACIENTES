@@ -91,6 +91,7 @@ def conexao_sistema_medico(conexao, endereco):
 
                 arriscado = 6*NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO
                 pacienteID = 0
+
                 for pacientes in medicoes_pacientes:
                     if pacientes:
                         risco_geral = 0

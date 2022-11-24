@@ -8,6 +8,7 @@ try:
     from auxiliar import codificar, descodificar, Requisicao
     from constantes import SOCKET_ENDERECO, SOCKET_PORTA, BUFFER, NUMERO_DE_MEDICOES_PARA_DETERMINAR_RISCO
 
+    import time
 except ModuleNotFoundError as error:
     try:
         showerror(error, "detectada falha na importacao de modulos utilizados")
@@ -85,6 +86,7 @@ if __name__ == "__main__":
         except:
             print("ERRO DE CONEXAO, TENTANDO NOVAMENTE")
 
+
     janela = Tk()
     janela.title("Sistema Medico")
     janela.protocol("WM_DELETE_WINDOW", sair)
@@ -107,4 +109,3 @@ if __name__ == "__main__":
     btn_pacientes_nao_urgente.grid(column=2, row=2)
 
     janela.mainloop()
-
